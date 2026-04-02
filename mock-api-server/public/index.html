@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MockForge — API Mock Server</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+  :root {
+  
+  --bg:        #0B0E17;
+  --bg2:       #15192B; /* Dark cards */
+  --glass:     rgba(21, 25, 43, 0.95);
+  --glass2:    rgba(21, 25, 43, 0.7);
+  --border:    rgba(255, 255, 255, 0.06);
+  --border2:   rgba(255, 255, 255, 0.12);
+  
+  
+  --blue:      #3B82F6;
+  --blue-dim:  rgba(59, 130, 246, 0.15);
+  --blue-glow: rgba(59, 130, 246, 0.35);
+  --cyan:      #00F0FF; 
+  --green:     #10B981;
+  --yellow:    #F59E0B;
+  --red:       #EF4444;
+  --violet:    #B026FF; /* The vibrant purple from the button */
+  --violet-glow: rgba(176, 38, 255, 0.4);
+  
+
+  --text:      #FFFFFF;
+  --text2:     #94A3B8;
+  --muted:     #64748B;
+  --mono:      'IBM Plex Mono', monospace;
+  --serif:     'Instrument Serif', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: radial-gradient(circle at 15% 50%, rgba(176, 38, 255, 0.05), transparent 40%),
+              radial-gradient(circle at 85% 30%, rgba(0, 240, 255, 0.05), transparent 40%);
+  pointer-events: none;
+}
+
+
+header {
+  position: relative; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 32px; height: 60px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+
+.logo-icon {
+  width: 34px; height: 34px;
+  background: linear-gradient(135deg, var(--violet) 0%, var(--cyan) 100%);
+  border-radius: 8px;
+  display: grid; place-items: center;
+  font-size: 12px; font-weight: 500; color: #fff;
+  box-shadow: 0 0 15px var(--violet-glow);
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-family: var(--serif);
+  font-size: 20px; font-style: italic;
+  color: var(--text); letter-spacing: -0.3px;
+}
+.logo-text span { color: var(--violet); font-style: normal; }
+
+.header-meta {
+  font-size: 11px; color: var(--muted);
+  display: flex; align-items: center; gap: 14px;
+}
+
+.status-dot {
+  display: inline-block; width: 6px; height: 6px;
+  border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: pulse 2.5s ease-in-out infinite;
+  margin-right: 5px;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+
+.container {
+  position: relative; z-index: 1;
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 60px);
+}
+
+
+.sidebar {
+  grid-row: 1 / 3;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  animation: slideIn 0.5s cubic-bezier(0.16,1,0.3,1) both;
+}
+
+@keyframes slideIn {
+  from { opacity:0; transform: translateX(-18px); }
+  to   { opacity:1; transform: translateX(0); }
+}
+
+.sidebar-header {
+  padding: 16px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.sidebar-title {
+  font-size: 9px; font-weight: 300;
+  letter-spacing: 3px; text-transform: uppercase; color: var(--muted);
+}
+
+.count-badge {
+  background: rgba(176, 38, 255, 0.15);
+  border: 1px solid rgba(176, 38, 255, 0.3);
+  border-radius: 20px; padding: 2px 10px;
+  font-size: 11px; color: var(--violet);
+}
+
+
+.form-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.form-row { display: flex; gap: 9px; margin-bottom: 9px; }
+.form-row:last-child { margin-bottom: 0; }
+.field { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+
+label {
+  font-size: 9px; font-weight: 300;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+}
+
+select, input[type="text"], input[type="number"] {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 11px;
+  color: var(--text);
+  font-family: var(--mono); font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  width: 100%;
+}
+
+select:focus, input:focus {
+  border-color: var(--violet);
+  background: rgba(176, 38, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(176, 38, 255, 0.1);
+}
+
+select option { background: var(--bg2); }
+
+.method-GET    { color: var(--green); }
+.method-POST   { color: var(--cyan); }
+.method-PUT    { color: var(--yellow); }
+.method-PATCH  { color: var(--violet); }
+.method-DELETE { color: var(--red); }
+
+.json-field { display: flex; flex-direction: column; gap: 5px; }
+.json-editor-wrap { position: relative; }
+
+textarea {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 11px;
+  color: var(--text);
+  font-family: var(--mono); font-size: 11px;
+  line-height: 1.65; resize: vertical; min-height: 96px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+textarea:focus {
+  border-color: var(--violet);
+  box-shadow: 0 0 0 3px rgba(176, 38, 255, 0.1);
+}
+textarea.invalid {
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.json-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 10px; padding: 3px 0; min-height: 18px;
+  transition: color 0.2s;
+}
+.json-status.valid   { color: var(--green); }
+.json-status.invalid { color: var(--red); }
+.json-status-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor; flex-shrink: 0;
+}
+
+
+.btn {
+  border: none; border-radius: 6px; cursor: pointer;
+  font-family: var(--mono); font-weight: 400;
+  font-size: 11px; letter-spacing: 0.5px;
+  transition: all 0.2s;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+
+.btn-primary {
+  background: linear-gradient(90deg, #A820FF 0%, #C441FF 100%);
+  color: #fff; padding: 10px 20px; width: 100%;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(168, 32, 255, 0.4);
+}
+.btn-primary:hover {
+  background: linear-gradient(90deg, #BA38FF 0%, #D55DFF 100%);
+  box-shadow: 0 6px 20px rgba(168, 32, 255, 0.6);
+  transform: translateY(-1px);
+}
+.btn-primary:active { transform: translateY(0); box-shadow: 0 2px 10px rgba(168, 32, 255, 0.4); }
+
+.btn-ghost {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border); padding: 6px 12px;
+}
+.btn-ghost:hover { border-color: var(--border2); color: var(--text); background: var(--bg2); }
+
+.btn-danger {
+  background: transparent; color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  padding: 4px 8px; font-size: 10px;
+}
+.btn-danger:hover { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.5); }
+
+
+.endpoint-list {
+  flex: 1; overflow-y: auto;
+  padding: 10px 12px;
+}
+
+.endpoint-list::-webkit-scrollbar { width: 3px; }
+.endpoint-list::-webkit-scrollbar-track { background: transparent; }
+.endpoint-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.endpoint-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 13px 11px 15px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  animation: fadeUp 0.3s cubic-bezier(0.16,1,0.3,1) both;
+  position: relative; overflow: hidden;
+}
+
+.endpoint-card::before {
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: transparent;
+  transition: background 0.2s;
+  border-radius: 8px 0 0 8px;
+}
+
+.endpoint-card:hover { border-color: var(--border2); }
+.endpoint-card.active {
+  border-color: rgba(176, 38, 255, 0.4);
+  background: rgba(176, 38, 255, 0.05);
+}
+.endpoint-card.active::before { background: var(--violet); box-shadow: 0 0 10px var(--violet); }
+
+@keyframes fadeUp {
+  from { opacity:0; transform: translateY(8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.card-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.card-method-path {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; overflow: hidden;
+}
+
+.method-badge {
+  font-size: 9px; font-weight: 500; letter-spacing: 1px;
+  padding: 2px 7px; border-radius: 4px;
+  border: 1px solid currentColor;
+  flex-shrink: 0; background: transparent;
+}
+
+.card-path { color: var(--text2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.card-meta { display: flex; gap: 10px; font-size: 10px; color: var(--muted); }
+
+.status-chip {
+  padding: 1px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 500;
+}
+.s2xx { background: rgba(16, 185, 129, 0.15);  color: var(--green); }
+.s3xx { background: rgba(0, 240, 255, 0.15);  color: var(--cyan); }
+.s4xx { background: rgba(245, 158, 11, 0.15);  color: var(--yellow); }
+.s5xx { background: rgba(239, 68, 68, 0.15); color: var(--red); }
+
+.empty-state {
+  text-align: center; padding: 48px 20px;
+  color: var(--muted); font-size: 12px;
+}
+.empty-state .empty-icon { font-size: 26px; margin-bottom: 12px; opacity: 0.2; }
+
+
+.main-top {
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  background: var(--bg2);
+  animation: fadeIn 0.4s ease 0.1s both;
+}
+
+@keyframes fadeIn { from{opacity:0;} to{opacity:1;} }
+
+.tab {
+  padding: 0 24px; height: 46px;
+  display: flex; align-items: center;
+  font-size: 10px; font-weight: 500;
+  letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.2s, border-color 0.2s;
+  user-select: none;
+}
+.tab:hover { color: var(--text2); }
+.tab.active { color: var(--violet); border-bottom-color: var(--violet); }
+
+.main-content { flex: 1; overflow: hidden; animation: fadeIn 0.4s ease 0.15s both; }
+
+.tab-panel {
+  display: none; height: 100%;
+  padding: 24px 28px; overflow-y: auto;
+  flex-direction: column; gap: 18px;
+}
+.tab-panel.active { display: flex; }
+.tab-panel::-webkit-scrollbar { width: 3px; }
+.tab-panel::-webkit-scrollbar-track { background: transparent; }
+.tab-panel::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+
+.detail-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding-bottom: 18px; border-bottom: 1px solid var(--border);
+}
+
+.detail-endpoint { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.detail-actions { display: flex; gap: 8px; }
+
+.detail-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+.detail-stat {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+  position: relative; overflow: hidden;
+}
+
+.stat-label {
+  font-size: 9px; font-weight: 300;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 10px;
+}
+
+.stat-value {
+  font-family: var(--serif); font-size: 30px; font-weight: 400;
+  color: var(--text); line-height: 1;
+}
+
+.code-block {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 16px 18px;
+  font-size: 12px; line-height: 1.75;
+  white-space: pre-wrap; word-break: break-all;
+  color: var(--text2); overflow: auto; max-height: 280px;
+}
+
+.section-label {
+  font-size: 9px; font-weight: 300;
+  letter-spacing: 2.5px; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+
+.url-bar {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 12px;
+}
+
+.url-text {
+  font-size: 12px; color: var(--cyan);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+
+.logs-table { width: 100%; border-collapse: collapse; }
+
+.logs-table th {
+  text-align: left; padding: 8px 12px;
+  font-size: 9px; font-weight: 300;
+  letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.logs-table td {
+  padding: 10px 12px; font-size: 11px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+}
+
+.logs-table tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+.log-new td { animation: highlight 1s ease; }
+@keyframes highlight {
+  from { background: rgba(176, 38, 255, 0.15); }
+  to   { background: transparent; }
+}
+
+
+#toast-container {
+  position: fixed; bottom: 24px; right: 24px;
+  display: flex; flex-direction: column; gap: 8px;
+  z-index: 9999;
+}
+
+.toast {
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: 8px; padding: 11px 16px;
+  font-size: 12px;
+  display: flex; align-items: center; gap: 10px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.7);
+  animation: toastIn 0.35s cubic-bezier(0.16,1,0.3,1);
+  max-width: 320px; color: var(--text);
+}
+.toast.success { border-left: 3px solid var(--violet); }
+.toast.error   { border-left: 3px solid var(--red); }
+
+@keyframes toastIn {
+  from { opacity:0; transform: translateX(18px) scale(0.95); }
+  to   { opacity:1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+  from { opacity:1; transform: translateX(0); }
+  to   { opacity:0; transform: translateX(14px); }
+}
+
+
+.no-select {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  height: 100%; gap: 14px;
+  color: var(--muted); text-align: center;
+}
+.no-select-icon { font-size: 32px; opacity: 0.1; }
+.no-select-text { font-size: 12px; letter-spacing: 0.5px; }
+</style>
+</head>
+<body>
+
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">MF</div>
+    <div class="logo-text"><em>Mock</em><span>Forge</span></div>
+  </div>
+  <div class="header-meta">
+    <button class="btn btn-ghost" id="btn-import" style="padding:5px 12px">&#8593; import</button>
+    <button class="btn btn-ghost" id="btn-export" style="padding:5px 12px">&#8595; export</button>
+    <span><span class="status-dot"></span>online</span>
+    <span id="server-url" style="color:var(--blue);opacity:0.45">localhost:3000</span>
+  </div>
+</header>
+
+
+<div id="modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(3,6,15,0.82);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(12px)">
+  <div style="background:rgba(10,16,30,0.98);border:1px solid var(--border2);border-radius:12px;padding:28px;width:520px;max-width:90vw;box-shadow:0 24px 80px rgba(0,0,0,0.7),0 0 0 1px rgba(78,142,247,0.1);animation:fadeUp 0.3s cubic-bezier(0.16,1,0.3,1)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <span style="font-family:var(--serif);font-size:18px;font-style:italic;color:var(--text)">Import Config</span>
+      <button class="btn btn-ghost" id="btn-modal-close" style="padding:4px 10px">&#x2715;</button>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;margin-bottom:8px">Import Mode</label>
+      <div style="display:flex;gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--text2)">
+          <input type="radio" name="import-mode" value="merge" checked style="accent-color:var(--blue)"/> merge — keep existing
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;text-transform:none;letter-spacing:0;cursor:pointer;color:var(--text2)">
+          <input type="radio" name="import-mode" value="replace" style="accent-color:var(--red)"/> replace — clear all first
+        </label>
+      </div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="display:block;margin-bottom:6px">Config JSON</label>
+      <textarea id="import-textarea" rows="10" placeholder='{"version":1,"endpoints":[{"method":"GET","path":"/users","statusCode":200,"body":{},"delay":0}]}' style="width:100%;min-height:180px"></textarea>
+      <div class="json-status" id="import-json-status" style="margin-top:5px">
+        <span class="json-status-dot"></span>
+        <span id="import-json-text">paste json above</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-primary" id="btn-import-submit" style="flex:1">import endpoints</button>
+      <label class="btn btn-ghost" style="cursor:pointer;padding:10px 16px">
+        &#128193; from file
+        <input type="file" id="import-file-input" accept=".json" style="display:none"/>
+      </label>
+    </div>
+    <div id="import-result" style="margin-top:12px;font-size:11px;display:none;line-height:1.6"></div>
+  </div>
+</div>
+
+
+<div class="container">
+
+
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <span class="sidebar-title">Endpoints</span>
+      <span class="count-badge" id="endpoint-count">0</span>
+    </div>
+
+   
+    <div class="form-section">
+      <div class="form-row">
+        <div class="field" style="max-width:96px">
+          <label>Method</label>
+          <select id="f-method">
+            <option class="method-GET">GET</option>
+            <option class="method-POST">POST</option>
+            <option class="method-PUT">PUT</option>
+            <option class="method-PATCH">PATCH</option>
+            <option class="method-DELETE">DELETE</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Path</label>
+          <input type="text" id="f-path" placeholder="/users/:id" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="field">
+          <label>Status Code</label>
+          <input type="number" id="f-status" value="200" min="100" max="599" />
+        </div>
+        <div class="field">
+          <label>Delay (ms)</label>
+          <input type="number" id="f-delay" value="0" min="0" max="30000" />
+        </div>
+      </div>
+
+      <div class="json-field" style="margin-bottom:12px">
+        <label>Response Body (JSON)</label>
+        <div class="json-editor-wrap">
+          <textarea id="f-body" rows="5" placeholder='{"message": "Hello World"}'></textarea>
+        </div>
+        <div class="json-status" id="json-status">
+          <span class="json-status-dot"></span>
+          <span id="json-status-text">enter json above</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" id="btn-create">
+        + register endpoint
+      </button>
+    </div>
+
+    
+    <div class="endpoint-list" id="endpoint-list">
+      <div class="empty-state">
+        <div class="empty-icon">{ }</div>
+        <div>no endpoints yet<br/>create one above</div>
+      </div>
+    </div>
+  </aside>
+
+  
+  <div class="main-top">
+    <div class="tab active" data-tab="detail">detail</div>
+    <div class="tab" data-tab="logs">request log</div>
+  </div>
+
+
+  <div class="main-content">
+
+    
+    <div class="tab-panel active" id="tab-detail">
+      <div class="no-select">
+        <div class="no-select-icon">◈</div>
+        <div class="no-select-text">select an endpoint to inspect</div>
+      </div>
+    </div>
+
+   
+    <div class="tab-panel" id="tab-logs">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <div class="section-label">incoming requests</div>
+        <button class="btn btn-ghost" id="btn-refresh-logs" style="padding:5px 12px">&#8635; refresh</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="logs-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Method</th>
+              <th>Path</th>
+              <th>Status</th>
+              <th>Delay</th>
+            </tr>
+          </thead>
+          <tbody id="logs-body">
+            <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">no requests yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<div id="toast-container"></div>
+
+<script>
+  const API = '';
+  let endpoints = [];
+  let selectedId = null;
+  let logPollInterval = null;
+
+  function toast(msg, type = 'success') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${type === 'success' ? '✓' : '✗'}</span> ${msg}`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => {
+      el.style.animation = 'toastOut 0.3s ease forwards';
+      setTimeout(() => el.remove(), 300);
+    }, 2800);
+  }
+
+  const bodyTA   = document.getElementById('f-body');
+  const jsonStat = document.getElementById('json-status');
+  const jsonText = document.getElementById('json-status-text');
+
+  function validateJSON(str) {
+    if (!str.trim()) {
+      jsonStat.className = 'json-status';
+      jsonText.textContent = 'Enter JSON above';
+      bodyTA.classList.remove('invalid');
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(str);
+      jsonStat.className = 'json-status valid';
+      jsonText.textContent = '✓ Valid JSON';
+      bodyTA.classList.remove('invalid');
+      return parsed;
+    } catch(e) {
+      jsonStat.className = 'json-status invalid';
+      jsonText.textContent = `✗ ${e.message}`;
+      bodyTA.classList.add('invalid');
+      return null;
+    }
+  }
+
+  bodyTA.addEventListener('input', () => validateJSON(bodyTA.value));
+
+  async function fetchEndpoints() {
+    try {
+      const res = await fetch(`${API}/admin/endpoints`);
+      const data = await res.json();
+      endpoints = data.data || [];
+      renderList();
+      document.getElementById('endpoint-count').textContent = endpoints.length;
+    } catch(e) {
+      toast('Could not reach server', 'error');
+    }
+  }
+
+  function renderList() {
+    const list = document.getElementById('endpoint-list');
+    if (!endpoints.length) {
+      list.innerHTML = `<div class="empty-state"><div class="empty-icon">{ }</div><div>no endpoints yet<br/>create one above</div></div>`;
+      return;
+    }
+    list.innerHTML = endpoints.map(ep => {
+      const sc = ep.statusCode;
+      const scClass = sc >= 500 ? 's5xx' : sc >= 400 ? 's4xx' : sc >= 300 ? 's3xx' : 's2xx';
+      const active = ep.id === selectedId ? 'active' : '';
+      return `
+        <div class="endpoint-card ${active}" data-id="${ep.id}" onclick="selectEndpoint('${ep.id}')">
+          <div class="card-top">
+            <div class="card-method-path">
+              <span class="method-badge method-${ep.method}">${ep.method}</span>
+              <span class="card-path">${ep.path}</span>
+            </div>
+            <button class="btn btn-danger" onclick="event.stopPropagation();deleteEndpoint('${ep.id}')">✕</button>
+          </div>
+          <div class="card-meta">
+            <span class="status-chip ${scClass}">${ep.statusCode}</span>
+            <span>${ep.delay}ms delay</span>
+            <span class="hit-count">${ep.hitCount} hit${ep.hitCount !== 1 ? 's' : ''}</span>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function selectEndpoint(id) {
+    selectedId = id;
+    renderList();
+    const ep = endpoints.find(e => e.id === id);
+    if (!ep) return;
+
+    const sc = ep.statusCode;
+    const scClass = sc >= 500 ? 's5xx' : sc >= 400 ? 's4xx' : sc >= 300 ? 's3xx' : 's2xx';
+    const mockUrl = `${location.origin}/mock${ep.path}`;
+
+    document.getElementById('tab-detail').innerHTML = `
+      <div class="detail-header">
+        <div>
+          <div class="detail-endpoint">
+            <span class="method-badge method-${ep.method}" style="font-size:12px;padding:4px 10px">${ep.method}</span>
+            <span style="font-size:15px">${ep.path}</span>
+          </div>
+          ${ep.description ? `<div style="font-size:12px;color:var(--muted);margin-top:6px">${ep.description}</div>` : ''}
+        </div>
+        <div class="detail-actions">
+          <button class="btn btn-ghost" onclick="copyUrl('${mockUrl}')">Copy URL</button>
+          <button class="btn btn-danger" style="padding:6px 12px" onclick="deleteEndpoint('${ep.id}')">Delete</button>
+        </div>
+      </div>
+
+      <div class="detail-grid">
+        <div class="detail-stat">
+          <div class="stat-label">Status Code</div>
+          <div class="stat-value"><span class="status-chip ${scClass}" style="font-size:18px">${ep.statusCode}</span></div>
+        </div>
+        <div class="detail-stat">
+          <div class="stat-label">Latency</div>
+          <div class="stat-value">${ep.delay}<span style="font-family:var(--mono);font-size:13px;color:var(--muted)">ms</span></div>
+        </div>
+        <div class="detail-stat">
+          <div class="stat-label">Hit Count</div>
+          <div class="stat-value">${ep.hitCount}</div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Mock URL</div>
+        <div class="url-bar">
+          <span class="url-text">${mockUrl}</span>
+          <button class="btn btn-ghost" style="flex-shrink:0" onclick="copyUrl('${mockUrl}')">Copy</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">Response Body</div>
+        <div class="code-block">${syntaxHighlight(ep.body)}</div>
+      </div>
+
+      <div style="font-size:10px;color:var(--muted)">
+        Created: ${new Date(ep.createdAt).toLocaleString()}
+      </div>
+    `;
+  }
+
+  function syntaxHighlight(obj) {
+    const str = JSON.stringify(obj, null, 2);
+    return str
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+        let cls = `color:var(--blue)`;
+        if (/^"/.test(match)) cls = /:$/.test(match) ? `color:var(--text2)` : `color:var(--cyan)`;
+        else if (/true|false/.test(match)) cls = `color:var(--violet)`;
+        else if (/null/.test(match)) cls = `color:var(--muted)`;
+        return `<span style="${cls}">${match}</span>`;
+      });
+  }
+
+  document.getElementById('btn-create').addEventListener('click', async () => {
+    const method  = document.getElementById('f-method').value;
+    const path    = document.getElementById('f-path').value.trim();
+    const status  = document.getElementById('f-status').value;
+    const delay   = document.getElementById('f-delay').value;
+    const bodyStr = bodyTA.value.trim();
+
+    if (!path) { toast('Path is required', 'error'); return; }
+    if (!path.startsWith('/')) { toast('Path must start with /', 'error'); return; }
+
+    const body = bodyStr ? validateJSON(bodyStr) : {};
+    if (bodyStr && body === null) { toast('Fix JSON errors before saving', 'error'); return; }
+
+    try {
+      const res = await fetch(`${API}/admin/endpoints`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ method, path, statusCode: parseInt(status), delay: parseInt(delay), body: body || {} })
+      });
+      const data = await res.json();
+      if (!data.success) { toast(data.error || data.errors?.join(', '), 'error'); return; }
+
+      toast(`Registered ${method} ${path}`);
+      document.getElementById('f-path').value = '';
+      bodyTA.value = '';
+      validateJSON('');
+      await fetchEndpoints();
+      selectEndpoint(data.data.id);
+    } catch(e) {
+      toast('Failed to register endpoint', 'error');
+    }
+  });
+
+  async function deleteEndpoint(id) {
+    try {
+      const res = await fetch(`${API}/admin/endpoints/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!data.success) { toast(data.error, 'error'); return; }
+      toast('Endpoint deleted');
+      if (selectedId === id) {
+        selectedId = null;
+        document.getElementById('tab-detail').innerHTML = `
+          <div class="no-select"><div class="no-select-icon">◈</div>
+          <div class="no-select-text">select an endpoint to inspect</div></div>`;
+      }
+      await fetchEndpoints();
+    } catch(e) {
+      toast('Failed to delete', 'error');
+    }
+  }
+
+  function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => toast('URL copied to clipboard'));
+  }
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+      if (tab.dataset.tab === 'logs') fetchLogs();
+    });
+  });
+
+  async function fetchLogs() {
+    try {
+      const res = await fetch(`${API}/admin/logs`);
+      const data = await res.json();
+      const logs = data.data || [];
+      const tbody = document.getElementById('logs-body');
+
+      if (!logs.length) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:40px">no requests yet</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map((log, i) => {
+        const sc = log.statusCode;
+        const scClass = sc >= 500 ? 's5xx' : sc >= 400 ? 's4xx' : sc >= 300 ? 's3xx' : 's2xx';
+        const time = new Date(log.timestamp).toLocaleTimeString();
+        return `
+          <tr class="${i === 0 ? 'log-new' : ''}">
+            <td style="color:var(--muted)">${time}</td>
+            <td><span class="method-badge method-${log.method}">${log.method}</span></td>
+            <td>${log.path}</td>
+            <td><span class="status-chip ${scClass}">${log.statusCode}</span></td>
+            <td style="color:var(--muted)">${log.delay}ms</td>
+          </tr>`;
+      }).join('');
+    } catch(e) {}
+  }
+
+  document.getElementById('btn-refresh-logs').addEventListener('click', fetchLogs);
+
+  document.getElementById('f-path').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-create').click();
+  });
+
+  document.getElementById('btn-export').addEventListener('click', async () => {
+    try {
+      const res  = await fetch(`${API}/admin/export`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const cd   = res.headers.get('Content-Disposition') || '';
+      const name = cd.match(/filename="(.+)"/)?.[1] || `mockforge-export-${Date.now()}.json`;
+      a.href = url; a.download = name; a.click();
+      URL.revokeObjectURL(url);
+      toast(`Exported ${endpoints.length} endpoint(s)`);
+    } catch(e) { toast('Export failed', 'error'); }
+  });
+
+  const overlay      = document.getElementById('modal-overlay');
+  const importTA     = document.getElementById('import-textarea');
+  const importStat   = document.getElementById('import-json-status');
+  const importText   = document.getElementById('import-json-text');
+  const importResult = document.getElementById('import-result');
+
+  function showModal()  { overlay.style.display = 'flex'; importResult.style.display = 'none'; }
+  function closeModal() { overlay.style.display = 'none'; }
+
+  document.getElementById('btn-import').addEventListener('click', showModal);
+  document.getElementById('btn-modal-close').addEventListener('click', closeModal);
+  overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
+
+  importTA.addEventListener('input', () => {
+    const val = importTA.value.trim();
+    if (!val) { importStat.className = 'json-status'; importText.textContent = 'Paste JSON above'; return; }
+    try {
+      JSON.parse(val);
+      importStat.className = 'json-status valid';
+      importText.textContent = '\u2713 Valid JSON';
+      importTA.classList.remove('invalid');
+    } catch(e) {
+      importStat.className = 'json-status invalid';
+      importText.textContent = `\u2717 ${e.message}`;
+      importTA.classList.add('invalid');
+    }
+  });
+
+  document.getElementById('import-file-input').addEventListener('change', e => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { importTA.value = ev.target.result; importTA.dispatchEvent(new Event('input')); };
+    reader.readAsText(file); e.target.value = '';
+  });
+
+  document.getElementById('btn-import-submit').addEventListener('click', async () => {
+    const raw = importTA.value.trim();
+    if (!raw) { toast('Paste or load a config file first', 'error'); return; }
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(e) { toast('Invalid JSON — fix errors first', 'error'); return; }
+    const mode = document.querySelector('input[name="import-mode"]:checked').value;
+    try {
+      const res  = await fetch(`${API}/admin/import`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ config: parsed, mode }),
+      });
+      const data = await res.json();
+      importResult.style.display = 'block';
+      if (data.success) {
+        importResult.style.color = 'var(--green)';
+        importResult.innerHTML = `\u2713 ${data.message}<br>` +
+          (data.added.length   ? `Added: ${data.added.join(', ')}<br>` : '') +
+          (data.skipped.length ? `Skipped: ${data.skipped.join(', ')}` : '');
+        toast(data.message); await fetchEndpoints();
+      } else {
+        importResult.style.color = 'var(--red)';
+        importResult.textContent = `\u2717 ${data.error || data.errors?.join(' | ')}`;
+      }
+    } catch(e) { toast('Import request failed', 'error'); }
+  });
+
+  fetchEndpoints();
+
+  setInterval(async () => {
+    await fetchEndpoints();
+    if (selectedId) {
+      const ep = endpoints.find(e => e.id === selectedId);
+      if (ep) selectEndpoint(selectedId);
+    }
+  }, 5000);
+</script>
+</body>
+</html>
